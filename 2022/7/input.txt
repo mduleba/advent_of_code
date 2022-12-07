@@ -1,4 +1,3 @@
-$ cd /
 $ ls
 dir cdnhnmcb
 dir dmccnsqv
