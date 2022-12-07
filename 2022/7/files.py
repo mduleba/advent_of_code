@@ -70,10 +70,10 @@ class CommandLine:
 
 
 class OS:
-    current_folder = None
 
     def __init__(self, file_with_commands):
         self.input_file = file_with_commands
+        self.current_folder = Folder('/')
 
     @cached_property
     def file(self):
@@ -88,7 +88,12 @@ class OS:
     def process(self):
         for line in self.lines:
             commandline = CommandLine(line)
-            print(commandline)
+
+            if isinstance(commandline, CD):
+                pass
+
+            if isinstance(commandline, LS):
+                pass
 
 
 os = OS('input.txt')
