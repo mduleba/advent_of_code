@@ -44,9 +44,11 @@ class Coords:
             y_diff = math.fabs(self.y - coords.y)
 
             if x_diff > y_diff:
-                return Coords(int(coords.x - (x_diff // 2)), coords.y)
+                new_x = int(coords.x - (x_diff // 2)) if coords.x > self.x else int(coords.x + (x_diff // 2))
+                return Coords(new_x, coords.y)
             elif y_diff > x_diff:
-                return Coords(coords.x, int(coords.y - (y_diff // 2)))
+                new_y = int(coords.y - (y_diff // 2)) if coords.y > self.y else int(coords.y + (y_diff // 2))
+                return Coords(coords.x, new_y)
 
 
 @dataclass
@@ -86,7 +88,7 @@ class Tail(Entity):
             elif point_between := self.coords.find_point_between_coords(head.coords):
                 self.coords = point_between
 
-            self.logs.append(self.coords.get_simple())
+        self.logs.append(self.coords.get_simple())
 
     def show_plot(self):
         xx = []
@@ -132,6 +134,12 @@ class Test:
         self.tail = Tail(coords=Coords(1, 1))
         self.head = Head(coords=Coords(1, 1), tail=self.tail)
 
+    def show_position(self):
+        plt.scatter([self.head.coords.x, self.tail.coords.y], [self.head.coords.y, self.tail.coords.y], s=100)
+        plt.xlim(1, 5)
+        plt.ylim(1, 5)
+        plt.show()
+
     def run(self):
         assert len(self.actions) == 24
         for movement in self.actions:
@@ -141,8 +149,8 @@ class Test:
         assert len(set(self.tail.logs)) == 13
 
 
-test_case = Test('test_input.txt')
-test_case.run()
+# test_case = Test('test_input.txt')
+# test_case.run()
 
 
 actions = load_actions('input.txt')
