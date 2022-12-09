@@ -71,21 +71,33 @@ class Entity:
         return self.coords.y == entity.coords.y
 
 
-class Tail(Entity):
-    def update(self, head: Head):
-        if self.coords.difference(head.coords) > 1:
-            if self.same_x(head):
-                if head.coords.y > self.coords.y:
+class RopeSegment(Entity):
+    def __init__(self, next_segment: RopeSegment = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.next_segment = next_segment
+
+    def notify(self):
+        if self.next_segment:
+            self.next_segment.update(self)
+
+    def move(self, movement: Move):
+        super().move(movement)
+        self.notify()
+
+    def update(self, previous_segment: RopeSegment):
+        if self.coords.difference(previous_segment.coords) > 1:
+            if self.same_x(previous_segment):
+                if previous_segment.coords.y > self.coords.y:
                     self.move(Move('U'))
                 else:
                     self.move(Move('D'))
-            elif self.same_y(head):
-                if head.coords.x > self.coords.x:
+            elif self.same_y(previous_segment):
+                if previous_segment.coords.x > self.coords.x:
                     self.move(Move('R'))
                 else:
                     self.move(Move('L'))
 
-            elif point_between := self.coords.find_point_between_coords(head.coords):
+            elif point_between := self.coords.find_point_between_coords(previous_segment.coords):
                 self.coords = point_between
 
         self.logs.append(self.coords.get_simple())
@@ -99,20 +111,6 @@ class Tail(Entity):
 
         plt.scatter(xx, yy, s=100)
         plt.show()
-
-
-class Head(Entity):
-
-    def __init__(self, tail: Tail, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.tail = tail
-
-    def notify(self):
-        self.tail.update(self)
-
-    def move(self, movement: Move):
-        super().move(movement)
-        self.notify()
 
 
 def load_actions(file_name):
@@ -131,22 +129,21 @@ class Test:
 
     def __init__(self, file_name):
         self.actions = load_actions(file_name)
-        self.tail = Tail(coords=Coords(1, 1))
-        self.head = Head(coords=Coords(1, 1), tail=self.tail)
-
-    def show_position(self):
-        plt.scatter([self.head.coords.x, self.tail.coords.y], [self.head.coords.y, self.tail.coords.y], s=100)
-        plt.xlim(1, 5)
-        plt.ylim(1, 5)
-        plt.show()
+        self.s10 = RopeSegment(coords=Coords(1, 1))
+        self.s9 = RopeSegment(coords=Coords(1, 1), next_segment=self.s10)
+        self.s8 = RopeSegment(coords=Coords(1, 1), next_segment=self.s9)
+        self.s7 = RopeSegment(coords=Coords(1, 1), next_segment=self.s8)
+        self.s6 = RopeSegment(coords=Coords(1, 1), next_segment=self.s7)
+        self.s5 = RopeSegment(coords=Coords(1, 1), next_segment=self.s6)
+        self.s4 = RopeSegment(coords=Coords(1, 1), next_segment=self.s5)
+        self.s3 = RopeSegment(coords=Coords(1, 1), next_segment=self.s4)
+        self.s2 = RopeSegment(coords=Coords(1, 1), next_segment=self.s3)
+        self.s1 = RopeSegment(coords=Coords(1, 1), next_segment=self.s2)
 
     def run(self):
-        assert len(self.actions) == 24
         for movement in self.actions:
-            self.head.move(movement)
-        assert self.head.coords == Coords(3, 3)
-        assert self.tail.coords == Coords(2, 3)
-        assert len(set(self.tail.logs)) == 13
+            self.s1.move(movement)
+        assert len(set(self.s9.logs)) == 36
 
 
 # test_case = Test('test_input.txt')
@@ -155,10 +152,20 @@ class Test:
 
 actions = load_actions('input.txt')
 
-tail = Tail(coords=Coords(1, 1))
-head = Head(coords=Coords(1, 1), tail=tail)
+s10 = RopeSegment(coords=Coords(1, 1))
+s9 = RopeSegment(coords=Coords(1, 1), next_segment=s10)
+s8 = RopeSegment(coords=Coords(1, 1), next_segment=s9)
+s7 = RopeSegment(coords=Coords(1, 1), next_segment=s8)
+s6 = RopeSegment(coords=Coords(1, 1), next_segment=s7)
+s5 = RopeSegment(coords=Coords(1, 1), next_segment=s6)
+s4 = RopeSegment(coords=Coords(1, 1), next_segment=s5)
+s3 = RopeSegment(coords=Coords(1, 1), next_segment=s4)
+s2 = RopeSegment(coords=Coords(1, 1), next_segment=s3)
+s1 = RopeSegment(coords=Coords(1, 1), next_segment=s2)
+
 
 for movement in actions:
-    head.move(movement)
+    s1.move(movement)
 
-print(len(set(tail.logs)))
+
+print(len(set(s9.logs)))
