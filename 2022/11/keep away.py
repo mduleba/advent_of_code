@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from math import floor
 from typing import List, Dict, Tuple
-
+from math import prod
 
 @dataclass
 class Item:
@@ -13,10 +13,11 @@ class Item:
     def __post_init__(self):
         self.unique = object()
 
-    def check_for_damage(self):
-        # self.worry_lvl = int(floor(self.worry_lvl / 3))
-        pass
-
+    def check_for_damage(self, mod=None):
+        if mod:
+            self.worry_lvl %= mod
+        else:
+            self.worry_lvl = int(floor(self.worry_lvl / 3))
 
 class OperationType(Enum):
     add = '+'
@@ -70,12 +71,12 @@ class Monke:
         self.inspected_items += 1
         item.worry_lvl = self.operation.compute(item.worry_lvl)
 
-    def turn(self) -> List[Tuple[int, Item]]:
+    def turn(self, divisible: int) -> List[Tuple[int, Item]]:
         thrown_items = []
         while self.items:
             item = self.items[0]
             self.inspect(item)
-            item.check_for_damage()
+            item.check_for_damage(divisible)
             target_monkey_index = self.where_to_throw(item)
             thrown_items.append((target_monkey_index, item))
             del self.items[0]
@@ -132,12 +133,13 @@ def load_initial_monkeys(file_name):
 
 
 class KeepAway:
-    def __init__(self, monkeys: Dict[int, Monke]):
+    def __init__(self, monkeys: Dict[int, Monke], divisible: int):
+        self.divisible = divisible
         self.monkeys = monkeys
 
     def round(self):
         for index, monke in self.monkeys.items():
-            items_thrown = monke.turn()
+            items_thrown = monke.turn(divisible)
 
             for monkey_index, item in items_thrown:
                 self.monkeys[monkey_index].receive(item)
@@ -148,11 +150,16 @@ class KeepAway:
             self.round()
 
 
-monkeys = load_initial_monkeys('input.txt')
-game = KeepAway(monkeys)
-game.play(115)
+if __name__ == "__main__":
 
-inspected_by_monke = [monke.inspected_items for index, monke in monkeys.items()]
-inspected_by_monke.sort()
-monke_business = inspected_by_monke[-1] * inspected_by_monke[-2]
-print(f'Monke Busssiness is {monke_business}')
+    monkeys = load_initial_monkeys('input.txt')
+
+    divisible = prod(monke.divisible_by for monke in monkeys.values())
+
+    game = KeepAway(monkeys, divisible)
+    game.play(10000)
+
+    inspected_by_monke = [monke.inspected_items for index, monke in monkeys.items()]
+    inspected_by_monke.sort()
+    monke_business = inspected_by_monke[-1] * inspected_by_monke[-2]
+    print(f'Monke Busssiness is {monke_business}')
