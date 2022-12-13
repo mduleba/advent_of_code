@@ -71,13 +71,28 @@ assert Packet([[1, 4], 8, 10, 6]) < Packet([8, 3, [0, 8, 4, 4]])
 assert not Packet([8, [[2, 6, 0, 9], [4, 9, 5, 5, 3], [8], 8, 3], [1]]) < Packet([[[8], 1, [1, 1, 3, 5, 1], [0, 3]], [], 4, 0, 5])
 
 
+@dataclass
+class Pair:
+    signal: Tuple
+
+    @property
+    def packet_1(self):
+        return Packet(self.signal[0])
+
+    @property
+    def packet_2(self):
+        return Packet(self.signal[1])
+
+    def is_valid(self):
+        return self.packet_1 < self.packet_2
+
+
 def check_signal(signals: List[Tuple]):
     right_signal_indexes = []
 
-    for index, signals in enumerate(signals, start=1):
-        packet_1 = Packet(signals[0])
-        packet_2 = Packet(signals[1])
-        if packet_1 < packet_2:
+    for index, signal in enumerate(signals, start=1):
+        pair = Pair(signal)
+        if pair.is_valid():
             right_signal_indexes.append(index)
 
     return right_signal_indexes
