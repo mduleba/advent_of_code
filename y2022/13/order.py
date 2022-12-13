@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from ast import literal_eval
-from typing import List, Tuple, Iterable
+from typing import List, Tuple, Iterable, Optional
 
 
 def load_file(file_name):
@@ -28,44 +28,41 @@ def load_signals(file_name):
 assert len(load_signals('input.txt')) * 3 - 1 == 449
 
 
+class Finish(Exception):
+    def __init__(self, result: Optional[bool], *args):
+        self.result = result
+        super().__init__(*args)
+
+
 class Packet:
     value: [int, list]
 
     def __init__(self, value: [int, list]):
         self.value = value
 
-    def __eq__(self, other):
-        return self.value == other.value
+    def compare(self, left, right):
+        match left, right:
+            case int(), int():
+                return left - right
+            case int(), list():
+                return self.compare([left], right)
+            case list(), int():
+                return self.compare(left, [right])
+            case list(), list():
+                for value, other_value in zip(left, right):
+                    if diff := self.compare(value, other_value):
+                        return diff
+                return len(left) - len(right)
 
     def __lt__(self, other):
         if not isinstance(other, Packet):
             raise Exception('Comparing different types')
 
-        match self.value, other.value:
-            case int(), int():
-                return self.value < other.value
-            case int(), list():
-                return Packet([self.value]) < other
-            case list(), int():
-                return self < Packet([other.value])
-            case list(), list():
-                other_iter = iter(other.value)
-                for element in self.value:
-                    try:
-                        other_item = Packet(next(other_iter))
-                    except StopIteration:
-                        return False
-
-                    item = Packet(element)
-                    if item == other_item:
-                        continue
-                    else:
-                        return item < other_item
-
-                return len(self.value) < len(other.value)
+        return self.compare(self.value, other.value) < 0
 
 
 assert Packet([1, 1, 3, 1, 1]) < Packet([1, 1, 5, 1, 1])
+assert Packet([2, 3, 4]) < Packet(4)
 assert Packet([[1], [2, 3, 4]]) < Packet([[1], 4])
 assert not Packet([9]) < Packet([[8, 7, 6]])
 assert Packet([[4, 4], 4, 4]) < Packet([[4, 4], 4, 4, 4])
@@ -75,7 +72,7 @@ assert not Packet([[[]]]) < Packet([[]])
 assert not Packet([1, [2, [3, [4, [5, 6, 7]]]], 8, 9]) < Packet([1, [2, [3, [4, [5, 6, 0]]]], 8, 9])
 
 assert Packet([[1, 4], 8, 10, 6]) < Packet([8, 3, [0, 8, 4, 4]])
-assert not Packet([8, [[2, 6, 0, 9], [4, 9, 5, 5, 3], [8], 8, 3], [1]]) < Packet([[[8], 1, [1, 1, 3, 5, 1], [0, 3]], [], 4, 0, 5])
+assert Packet([1]) < Packet([[1], 2])
 
 
 @dataclass
@@ -110,3 +107,22 @@ if __name__ == '__main__':
 
     right_signal_indexes = check_signal(signals)
     print(f'Sum: {sum(right_signal_indexes)}')
+
+    packets = []
+    for s1, s2 in signals:
+        packets.append(Packet(s1))
+        packets.append(Packet(s2))
+
+    two, six = [[2]], [[6]]
+    packets += [Packet(two), Packet(six)]
+    packets.sort()
+
+    d1 = None
+    d2 = None
+    for i, packet in enumerate(packets, start=1):
+        if packet.value == two:
+            d1 = i
+        if packet.value == six:
+            d2 = i
+
+    print(f'Key {d1*d2}')
