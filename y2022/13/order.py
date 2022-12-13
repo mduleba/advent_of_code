@@ -4,21 +4,28 @@ from dataclasses import dataclass
 from ast import literal_eval
 from typing import List, Tuple, Iterable
 
-from y2022.helpers import load_file
+
+def load_file(file_name):
+    lines = []
+    with open(file_name) as file:
+        for line in file.readlines():
+            clean_line = line.rstrip('\n')
+            lines.append(clean_line)
+    return lines
 
 
-def load_signals(get_array_method=literal_eval):
+def load_signals(file_name):
     pairs: List[Tuple] = []
-    without_breaks = [line for line in load_file() if line]
+    without_breaks = [line for line in load_file(file_name) if line]
     for pair_start in range(0, len(without_breaks), 2):
         packet_1 = without_breaks[pair_start]
         packet_2 = without_breaks[pair_start+1]
-        pairs.append((get_array_method(packet_1), get_array_method(packet_2)))
+        pairs.append((literal_eval(packet_1), literal_eval(packet_2)))
 
     return pairs
 
 
-assert len(load_signals()) * 3 - 1 == 449
+assert len(load_signals('input.txt')) * 3 - 1 == 449
 
 
 class Packet:
@@ -99,7 +106,7 @@ def check_signal(signals: List[Tuple]):
 
 
 if __name__ == '__main__':
-    signals = load_signals()
+    signals = load_signals('input.txt')
 
     right_signal_indexes = check_signal(signals)
     print(f'Sum: {sum(right_signal_indexes)}')
