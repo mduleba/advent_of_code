@@ -3,24 +3,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import cached_property, lru_cache
+from math import sin, pi, cos
 from typing import List, Tuple, Set, Dict, Optional
 
 from y2022.helpers import load_file
 import re
+import numpy as np
 
 
 @dataclass(frozen=True)
 class Coord:
-    _x: str
-    _y: str
-
-    @cached_property
-    def x(self):
-        return int(self._x)
-
-    @cached_property
-    def y(self):
-        return int(self._y)
+    x: int
+    y: int
 
     @property
     def value(self):
@@ -34,6 +28,10 @@ class Coord:
 class Beacon:
     coord: Coord
 
+    @property
+    def tunning_frequency(self):
+        return self.coord.x * 4000000 + self.coord.y
+
 
 @dataclass
 class Sensor:
@@ -44,15 +42,41 @@ class Sensor:
     def range(self):
         return self.coord.manhattan_distance(self.closest_beacon.coord)
 
-    def coord_in_range(self, coord: Coord):
+    @cached_property
+    def x_max(self):
+        return self.coord.x + self.range
+
+    @cached_property
+    def x_min(self):
+        return self.coord.x - self.range
+
+    def is_coord_in_range(self, coord: Coord):
         return self.coord.manhattan_distance(coord) <= self.range
+
+    def outside_edge_points(self, min_r, max_r):
+        edge_points = set()
+        edge_variants = [
+            lambda i: (self.x_max-i+1, self.coord.y-i),
+            lambda i: (self.x_max-i+1, self.coord.y+i),
+            lambda i: (self.x_min+i-1, self.coord.y-i),
+            lambda i: (self.x_min+i-1, self.coord.y+i),
+        ]
+        for i in range(self.range+2):
+            for edge_variant in edge_variants:
+                x, y = edge_variant(i)
+                if min_r <= x <= max_r and min_r <= y <= max_r:
+                    edge_points.add(Coord(x, y))
+
+        return edge_points
 
 
 def load_data(file_name):
     sensors = []
     xy_re = re.compile('x=(?P<x>.*), y=(?P<y>.*)')
     for line in load_file(file_name):
-        sensor_coord, beacon_coord = [Coord(*xy_re.findall(part)[0]) for part in line.split(':')]
+        sensor_coord, beacon_coord = [Coord(int(xy_re.findall(part)[0][0]), int(xy_re.findall(part)[0][1]))
+                                      for part in line.split(':')]
+
         beacon = Beacon(beacon_coord)
         sensors.append(Sensor(sensor_coord, closest_beacon=beacon))
     return sensors
@@ -90,7 +114,7 @@ class Tunnels:
     def biggest_range(self):
         return max(sensor.range for sensor in self.sensors)
 
-    def show(self, output_file, with_range=False, custom_limit: Optional[Tuple[int, int]] = None):
+    def show(self, output_file, with_range=False, custom_limit: Optional[Tuple[int, int]] = None, only_edge=False):
         if custom_limit:
             min_l, max_l = custom_limit
             min_y, min_x = min_l, min_l
@@ -106,17 +130,24 @@ class Tunnels:
                 line = f'{y}: '.zfill(5)
                 for x in range(min_x, max_x + 1):
                     added = False
-                    point = Coord(str(x), str(y))
+                    point = Coord(x, y)
 
                     if letter := self.coords.get(point):
                         line += letter
                         added = True
                     elif with_range:
                         for sensor in self.sensors:
-                            if sensor.coord_in_range(point):
-                                line += '#'
-                                added = True
-                                break
+                            if only_edge:
+                                if point in sensor.outside_edge_points(min_y, max_y):
+                                    line += '#'
+                                    added = True
+                                    break
+
+                            if not only_edge:
+                                if sensor.is_coord_in_range(point):
+                                    line += '#'
+                                    added = True
+                                    break
 
                     if not added:
                         line += '.'
@@ -124,17 +155,15 @@ class Tunnels:
                 file.write(line + '\n')
 
     def check_row(self, y: int):
-        row = str(y)
         points_in_range = 0
         for x in range(self.min_x, self.max_x+1):
-            point = Coord(str(x), row)
+            point = Coord(x, y)
             for sensor in self.sensors:
 
-                # eeeemmm something fcked
                 if point in (sensor.coord, sensor.closest_beacon.coord):
                     continue
 
-                if sensor.coord_in_range(point):
+                if sensor.is_coord_in_range(point):
                     points_in_range += 1
                     break
 
@@ -144,14 +173,14 @@ class Tunnels:
         row = f'{y}: '.zfill(5)
         for x in range(self.min_x, self.max_x + 1):
             added = False
-            point = Coord(str(x), str(y))
+            point = Coord(x, y)
             if letter := self.coords.get(point):
                 row += letter
                 added = True
             else:
                 for sensor in self.sensors:
-                    point = Coord(str(x), str(y))
-                    if sensor.coord_in_range(point):
+                    point = Coord(x, y)
+                    if sensor.is_coord_in_range(point):
                         row += '#'
                         added = True
                         break
@@ -162,31 +191,35 @@ class Tunnels:
 
     def sensor_with_range(self, coord: Coord) -> Optional[Sensor]:
         for sensor in self.sensors:
-            if coord in (sensor.coord, sensor.closest_beacon.coord):
-                continue
-
-            if sensor.coord_in_range(coord):
+            if sensor.is_coord_in_range(coord):
                 return sensor
 
-    def find(self, min_r, max_r):
-        for y in range(min_r, max_r+1):
-            for x in range(min_r, max_r+1):
-                point = Coord(str(x), str(y))
-
+    def find_on_edge(self, min_r, max_r):
+        i = 1
+        for sensor in self.sensors:
+            print(f'\nChecking sensor: {i} of {len(self.sensors)}')
+            length = len(sensor.outside_edge_points(min_r, max_r))
+            j = 1
+            for point in sensor.outside_edge_points(min_r, max_r):
+                print(f'Checking points: {j} from {length}')
                 if self.sensor_with_range(point):
-                    break
+                    j += 1
+                    continue
                 else:
                     return point
+            i += 1
 
 
 test_sensors = load_data('test.txt')
 test_tunnels = Tunnels(test_sensors)
 
 assert test_tunnels.check_row(10) == 26
-assert test_tunnels.find(0, 20) == Coord('14', '11')
-test_beacon = test_tunnels.find(0, 20)
+assert test_tunnels.find_on_edge(0, 20) == Coord(14, 11)
 
 
-# sensors = load_data('input.txt')
-# tunnels = Tunnels(sensors)
-# r2000000 = tunnels.check_row(2000000)
+if __name__ == '__main__':
+
+    sensors = load_data('input.txt')
+    tunnels = Tunnels(sensors)
+
+    beacon = Beacon(tunnels.find_on_edge(0, 4000000))
