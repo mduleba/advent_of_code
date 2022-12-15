@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import cached_property, lru_cache
-from typing import List, Tuple, Set, Dict, TypeAlias
+from typing import List, Tuple, Set, Dict, Optional
 
 from y2022.helpers import load_file
 import re
@@ -90,11 +90,21 @@ class Tunnels:
     def biggest_range(self):
         return max(sensor.range for sensor in self.sensors)
 
-    def show(self, output_file, with_range=False):
+    def show(self, output_file, with_range=False, custom_limit: Optional[Tuple[int, int]] = None):
+        if custom_limit:
+            min_l, max_l = custom_limit
+            min_y, min_x = min_l, min_l
+            max_y, max_x = max_l, max_l
+        else:
+            min_y = self.min_y
+            max_y = self.max_y
+            min_x = self.min_x
+            max_x = self.max_x
+
         with open(output_file, 'w') as file:
-            for y in range(self.min_y, self.max_y + 1):
+            for y in range(min_y, max_y + 1):
                 line = f'{y}: '.zfill(5)
-                for x in range(self.min_x, self.max_x + 1):
+                for x in range(min_x, max_x + 1):
                     added = False
                     point = Coord(str(x), str(y))
 
@@ -114,11 +124,9 @@ class Tunnels:
                 file.write(line + '\n')
 
     def check_row(self, y: int):
-        print(f'Checking row: {y}')
         row = str(y)
         points_in_range = 0
         for x in range(self.min_x, self.max_x+1):
-            print(f'\nChecking column: {x} in range {self.min_x} - {self.max_x}')
             point = Coord(str(x), row)
             for sensor in self.sensors:
 
@@ -150,16 +158,35 @@ class Tunnels:
 
             if not added:
                 row += '.'
-
         return row
+
+    def sensor_with_range(self, coord: Coord) -> Optional[Sensor]:
+        for sensor in self.sensors:
+            if coord in (sensor.coord, sensor.closest_beacon.coord):
+                continue
+
+            if sensor.coord_in_range(coord):
+                return sensor
+
+    def find(self, min_r, max_r):
+        for y in range(min_r, max_r+1):
+            for x in range(min_r, max_r+1):
+                point = Coord(str(x), str(y))
+
+                if self.sensor_with_range(point):
+                    break
+                else:
+                    return point
 
 
 test_sensors = load_data('test.txt')
 test_tunnels = Tunnels(test_sensors)
+
 assert test_tunnels.check_row(10) == 26
+assert test_tunnels.find(0, 20) == Coord('14', '11')
+test_beacon = test_tunnels.find(0, 20)
 
 
-sensors = load_data('input.txt')
-tunnels = Tunnels(sensors)
-
+# sensors = load_data('input.txt')
+# tunnels = Tunnels(sensors)
 # r2000000 = tunnels.check_row(2000000)
