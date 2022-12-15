@@ -22,7 +22,7 @@ class Tree:
         return f'T{self.height}'
 
     def __lt__(self, other):
-        return self.height < other.height
+        return self.height < other.max_y
 
     def __gt__(self, other: Tree):
         return self.height > other.height
