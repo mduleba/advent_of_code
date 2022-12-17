@@ -2,7 +2,7 @@ import itertools
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 from y2022.helpers import load_file
 
@@ -26,6 +26,13 @@ class RockShape:
         self.left = left
         self.tiles = self.get_tiles()
 
+    def get_columns_height(self) -> Dict[int, int]:
+        raise NotImplementedError()
+
+    @property
+    def columns_height(self):
+        return self.get_columns_height()
+
     @property
     def top_tile(self):
         return max(self.tiles)
@@ -33,10 +40,6 @@ class RockShape:
     @property
     def bottom_tile(self):
         return min(self.tiles)
-
-    # @cached_property
-    # def tiles(self) -> List[Coord]:
-    #     return self.get_tiles()
 
     def get_tiles(self) -> List[Coord]:
         raise NotImplementedError()
@@ -48,6 +51,9 @@ class RockLine(RockShape):
     """
     def get_tiles(self):
         return [Coord(self.left+i, self.bottom) for i in range(4)]
+
+    def get_columns_height(self) -> Dict[int, int]:
+        return {self.left+i: self.bottom for i in range(4)}
 
 
 class RockPlus(RockShape):
@@ -61,6 +67,9 @@ class RockPlus(RockShape):
                [Coord(self.left+i, self.bottom+1) for i in range(3)] + \
                [Coord(self.left+1, self.bottom)]
 
+    def get_columns_height(self) -> Dict[int, int]:
+        return {self.left: self.bottom+1, self.left+1: self.bottom+2, self.left+2: self.bottom+1}
+
 
 class RockAngle(RockShape):
     """
@@ -71,6 +80,9 @@ class RockAngle(RockShape):
     def get_tiles(self):
         return [Coord(self.left+2, self.bottom+1+i) for i in range(2)] + \
                [Coord(self.left+i, self.bottom) for i in range(3)]
+
+    def get_columns_height(self) -> Dict[int, int]:
+        pass
 
 
 class RockPipe(RockShape):
@@ -83,6 +95,9 @@ class RockPipe(RockShape):
     def get_tiles(self):
         return [Coord(self.left, self.bottom+i) for i in range(4)]
 
+    def get_columns_height(self) -> Dict[int, int]:
+        pass
+
 
 class RockSquare(RockShape):
     """
@@ -92,6 +107,10 @@ class RockSquare(RockShape):
     def get_tiles(self):
         return [Coord(self.left+i, self.bottom) for i in range(2)] + \
                [Coord(self.left+i, self.bottom+1) for i in range(2)]
+
+    def get_columns_height(self) -> Dict[int, int]:
+        pass
+
 
 
 class RockGenerator:
