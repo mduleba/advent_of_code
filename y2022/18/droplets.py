@@ -84,6 +84,10 @@ class Obsidian:
             else:
                 water.add(cube)
 
+        for cube in water:
+            if all(edge in self.droplets or edge in water for edge in cube.edges):
+                air.add(cube)
+
         return water, air
 
     @property
@@ -107,4 +111,5 @@ if __name__ == '__main__':
     input_droplets = load_droplets('input.txt')
 
     obsidian = Obsidian(input_droplets)
+    print(len(obsidian.exposed_sides) - len(obsidian.inside_sides()))
 
