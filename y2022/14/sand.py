@@ -197,7 +197,7 @@ def load_rock_paths(file_name='input.txt'):
     return rocks
 
 
-# test_rocks = load_rock_paths('test_input.txt.txt')
+# test_rocks = load_rock_paths('test_input.txt.txt.txt')
 # assert len(test_rocks) == 20
 # test_cavern = Cavern(test_rocks)
 #

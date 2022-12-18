@@ -160,7 +160,7 @@ class Test:
             i += 1
 
 
-# test_case = Test('test_input.txt.txt')
+# test_case = Test('test_input.txt.txt.txt')
 # test_case.run()
 
 
